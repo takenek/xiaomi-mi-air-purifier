@@ -2,8 +2,43 @@
  * Wait for {delay} ms
  * @param delay in milliseconds
  */
-export const wait = (delay: number) =>
-  new Promise((resolve) => setTimeout(resolve, delay));
+const createAbortError = () => {
+  const error = new Error('The operation was aborted');
+  error.name = 'AbortError';
+  return error;
+};
+
+type AbortSignalWithEventListener = AbortSignal & {
+  addEventListener?: (
+    event: 'abort',
+    listener: () => void,
+    options?: { once?: boolean },
+  ) => void;
+  removeEventListener?: (event: 'abort', listener: () => void) => void;
+};
+
+export const wait = (delay: number, signal?: AbortSignal) =>
+  new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(createAbortError());
+      return;
+    }
+
+    const abortSignal = signal as AbortSignalWithEventListener | undefined;
+
+    const timeout = setTimeout(() => {
+      abortSignal?.removeEventListener?.('abort', onAbort);
+      resolve(undefined);
+    }, delay);
+
+    function onAbort() {
+      clearTimeout(timeout);
+      abortSignal?.removeEventListener?.('abort', onAbort);
+      reject(createAbortError());
+    }
+
+    abortSignal?.addEventListener?.('abort', onAbort, { once: true });
+  });
 
 export function reportSetupError(context: string, error: unknown): void {
   const details = error instanceof Error ? error : new Error(String(error));
@@ -53,10 +88,17 @@ export const retry = <T>(
   delay: number,
   retries = Number.POSITIVE_INFINITY,
   shouldRetry: (reason: unknown) => boolean = () => true,
+  signal?: AbortSignal,
 ): Promise<T> =>
   task().catch((reason) => {
+    if (signal?.aborted) {
+      return Promise.reject(createAbortError());
+    }
+
     if (retries > 0 && shouldRetry(reason)) {
-      return wait(delay).then(() => retry(task, delay, retries - 1, shouldRetry));
+      return wait(delay, signal).then(() =>
+        retry(task, delay, retries - 1, shouldRetry, signal),
+      );
     }
     return Promise.reject(reason);
   });

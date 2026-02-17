@@ -27,7 +27,6 @@ export function add(
     })
     .onSet(async (speed) => {
       const device = await maybeDevice;
-      console.log(device);
       // If the device isn't in manual mode change it first
       if ((await device.mode()) !== MODE.NONE) {
         await device.changeMode(MODE.NONE);

@@ -10,7 +10,7 @@ export function add(
     device.on('pm2.5Changed', (value) => {
       service.updateCharacteristic(characteristic, value);
     });
-  });
+  }).catch(() => undefined);
 
   return service.getCharacteristic(characteristic).onGet(async () => {
     const device = await maybeDevice;

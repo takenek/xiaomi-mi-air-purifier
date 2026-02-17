@@ -15,7 +15,7 @@ export function add(
         isLocked ? CONTROL_LOCK_ENABLED : CONTROL_LOCK_DISABLED,
       );
     });
-  });
+  }).catch(() => undefined);
 
   return service
     .getCharacteristic(characteristic)

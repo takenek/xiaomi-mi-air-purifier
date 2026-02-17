@@ -28,7 +28,7 @@ export function add(
     device.on('pm2.5Changed', (value: number) => {
       service.updateCharacteristic(characteristic, pm2_5ToAqi(value));
     });
-  });
+  }).catch(() => undefined);
 
   return service.getCharacteristic(characteristic).onGet(async () => {
     const device = await maybeDevice;

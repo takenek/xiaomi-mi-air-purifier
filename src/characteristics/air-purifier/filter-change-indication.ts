@@ -21,7 +21,7 @@ export function add(
         service.updateCharacteristic(characteristic, CHANGE_FILTER);
       }
     });
-  });
+  }).catch(() => undefined);
 
   return service.getCharacteristic(characteristic).onGet(async () => {
     const device = await maybeDevice;

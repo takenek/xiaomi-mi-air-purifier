@@ -69,6 +69,33 @@ test('retry: does not retry non-recoverable errors', async () => {
   assert.equal(calls, 1);
 });
 
+test('retry: abort signal stops pending retries', async () => {
+  const controller = new AbortController();
+  let calls = 0;
+
+  const pending = retry(
+    async () => {
+      calls += 1;
+      const error = new Error('Connection reset by peer');
+      error.code = 'ECONNRESET';
+      throw error;
+    },
+    100,
+    5,
+    isRecoverableConnectionError,
+    controller.signal,
+  );
+
+  setTimeout(() => controller.abort(), 10);
+
+  await assert.rejects(pending, (error) => {
+    assert.equal(error.name, 'AbortError');
+    return true;
+  });
+
+  assert.equal(calls, 1);
+});
+
 test('isRecoverableConnectionError: timeout messages are recoverable', () => {
   assert.equal(isRecoverableConnectionError(new Error('Socket timeout')), true);
 });

@@ -53,6 +53,7 @@ export class XiaomiMiAirPurifierAccessory implements AccessoryPlugin {
   private readonly humiditySensorService?: Service;
 
   private connection?: Promise<any>;
+  private connectionAbortController?: AbortController;
   protected readonly maybeDevice?: Promise<any>;
 
   constructor(
@@ -79,6 +80,8 @@ export class XiaomiMiAirPurifierAccessory implements AccessoryPlugin {
       const resilientDevice = new ResilientMiioDevice(
         () => this.connect(config),
         () => {
+          this.connectionAbortController?.abort();
+          this.connectionAbortController = undefined;
           this.connection = undefined;
         },
         this.log,
@@ -210,6 +213,7 @@ export class XiaomiMiAirPurifierAccessory implements AccessoryPlugin {
   connect(config: XiaomiMiAirPurifierAccessoryConfig): Promise<any> {
     if (!this.connection) {
       const { address, token } = config;
+      this.connectionAbortController = new AbortController();
       this.connection = retry(
         () => miio.device({ address, token }).then((device) => {
           this.log.debug(`Connection established to ${address}.`);
@@ -218,6 +222,7 @@ export class XiaomiMiAirPurifierAccessory implements AccessoryPlugin {
         RETRY_DELAY,
         Number.POSITIVE_INFINITY,
         isRecoverableConnectionError,
+        this.connectionAbortController.signal,
       );
     }
 

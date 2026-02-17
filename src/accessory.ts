@@ -5,9 +5,9 @@ import {
   AccessoryConfig,
   AccessoryPlugin,
 } from 'homebridge';
-import { EventEmitter } from 'events';
 import miio from '@rifat/miio';
 import { retry, isDefined, isRecoverableConnectionError } from './utils';
+import { ResilientMiioDevice } from './resilient-miio-device';
 import { add as addActive } from './characteristics/air-purifier/active';
 import { add as addCurrentAirPurifierState } from './characteristics/air-purifier/current-air-purifier-state';
 import { add as addTargetAirPurifierState } from './characteristics/air-purifier/target-air-purifier-state';
@@ -24,18 +24,6 @@ import { add as addCurrentTemperature } from './characteristics/current-temperat
 import { add as addCurrentRelativeHumidity } from './characteristics/current-relative-humidity';
 
 const RETRY_DELAY = 5000;
-const OPERATION_RETRIES = 3;
-const DEVICE_EVENTS = [
-  'powerChanged',
-  'modeChanged',
-  'fanSpeedChanged',
-  'childLockChanged',
-  'filterLifeChanged',
-  'pm2.5Changed',
-  'temperatureChanged',
-  'relativeHumidityChanged',
-];
-
 export interface XiaomiMiAirPurifierAccessoryConfig extends AccessoryConfig {
   token: string;
   address: string;
@@ -51,58 +39,6 @@ function isValidConfig(
   config: AccessoryConfig,
 ): config is XiaomiMiAirPurifierAccessoryConfig {
   return !!config.token && !!config.address;
-}
-
-class ResilientMiioDevice extends EventEmitter {
-  constructor(
-    private readonly connectDevice: () => Promise<any>,
-    private readonly resetConnection: () => void,
-    private readonly log: Logger,
-  ) {
-    super();
-  }
-
-  attachEventForwarding(device: EventEmitter) {
-    DEVICE_EVENTS.forEach((eventName) => {
-      device.on(eventName, (...args: unknown[]) => this.emit(eventName, ...args));
-    });
-  }
-
-  async invoke(methodName: string, ...args: unknown[]) {
-    let lastError: unknown;
-
-    for (let attempt = 0; attempt < OPERATION_RETRIES; attempt += 1) {
-      try {
-        const device = await this.connectDevice();
-        const candidateMethod = (device as Record<string, unknown>)[methodName];
-
-        if (typeof candidateMethod !== 'function') {
-          throw new Error(`Unsupported miio method: ${methodName}`);
-        }
-
-        return await (
-          candidateMethod as (
-            this: unknown,
-            ...argList: unknown[]
-          ) => Promise<unknown>
-        ).apply(device, args);
-      } catch (error) {
-        lastError = error;
-
-        if (!isRecoverableConnectionError(error)) {
-          break;
-        }
-
-        this.log.warn(
-          `Recoverable error while calling '${methodName}', reconnecting (attempt ${attempt + 1}/${OPERATION_RETRIES})`,
-          error,
-        );
-        this.resetConnection();
-      }
-    }
-
-    throw lastError;
-  }
 }
 
 export class XiaomiMiAirPurifierAccessory implements AccessoryPlugin {

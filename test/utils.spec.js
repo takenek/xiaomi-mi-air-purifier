@@ -83,3 +83,21 @@ test('isRecoverableConnectionError: ENOTCONN and EHOSTUNREACH are recoverable', 
   assert.equal(isRecoverableConnectionError(notConn), true);
   assert.equal(isRecoverableConnectionError(hostUnreachable), true);
 });
+
+
+test('isRecoverableConnectionError: known socket errors are recoverable', () => {
+  const recoverableCodes = [
+    'ETIMEDOUT',
+    'ECONNRESET',
+    'ECONNREFUSED',
+    'ENETUNREACH',
+    'EPIPE',
+    'EAI_AGAIN',
+  ];
+
+  recoverableCodes.forEach((code) => {
+    const error = new Error(`recoverable ${code}`);
+    error.code = code;
+    assert.equal(isRecoverableConnectionError(error), true, code);
+  });
+});

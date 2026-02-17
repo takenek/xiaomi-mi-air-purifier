@@ -19,7 +19,7 @@ export function add(
         isOn ? PURIFYING_AIR : INACTIVE,
       );
     });
-  });
+  }).catch(() => undefined);
 
   return service.getCharacteristic(characteristic).onGet(async () => {
     const device = await maybeDevice;

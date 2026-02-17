@@ -13,7 +13,7 @@ export function add(
     device.on('modeChanged', (mode) => {
       service.updateCharacteristic(characteristic, mode ? MANUAL : AUTO);
     });
-  });
+  }).catch(() => undefined);
 
   return service
     .getCharacteristic(characteristic)

@@ -10,7 +10,7 @@ export function add(
     device.on('relativeHumidityChanged', (value: number) => {
       service.updateCharacteristic(characteristic, value);
     });
-  });
+  }).catch(() => undefined);
 
   return service.getCharacteristic(characteristic).onGet(async () => {
     const device = await maybeDevice;

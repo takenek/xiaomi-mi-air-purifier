@@ -10,7 +10,7 @@ export function add(
     device.on('temperatureChanged', ({ value }) => {
       service.updateCharacteristic(characteristic, value);
     });
-  });
+  }).catch(() => undefined);
 
   return service.getCharacteristic(characteristic).onGet(
     // Temperature { value: 23.4, unit: 'C' }

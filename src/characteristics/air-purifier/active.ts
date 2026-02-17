@@ -12,7 +12,7 @@ export function add(
     device.on('powerChanged', (isOn: boolean) => {
       service.updateCharacteristic(characteristic, isOn ? ACTIVE : INACTIVE);
     });
-  });
+  }).catch(() => undefined);
 
   return service
     .getCharacteristic(characteristic)

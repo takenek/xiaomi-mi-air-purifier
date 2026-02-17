@@ -17,7 +17,7 @@ export function add(
     device.on('fanSpeedChanged', (speed) => {
       service.updateCharacteristic(characteristic, toPercentage(speed));
     });
-  });
+  }).catch(() => undefined);
 
   return service
     .getCharacteristic(characteristic)

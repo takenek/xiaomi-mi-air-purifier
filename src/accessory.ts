@@ -152,6 +152,14 @@ export class XiaomiMiAirPurifierAccessory implements AccessoryPlugin {
 
           return new Proxy(resilientDevice, {
             get(target, prop, receiver) {
+              // Avoid Promise thenable assimilation on the proxy object.
+              // If a "then" function is exposed, Promise resolution treats this
+              // object as a thenable and invokes it, which crashes because miio
+              // devices do not implement a "then" method.
+              if (prop === 'then' || prop === 'catch' || prop === 'finally') {
+                return undefined;
+              }
+
               if (typeof prop === 'string' && !(prop in target)) {
                 return (...args: unknown[]) => target.invoke(prop, ...args);
               }

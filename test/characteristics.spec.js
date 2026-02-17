@@ -21,16 +21,27 @@ function createServiceStub() {
 
 test('Active characteristic setup handles rejected maybeDevice without unhandled rejection', async () => {
   const unhandled = [];
-  const handler = (error) => {
+  const warnings = [];
+  const unhandledHandler = (error) => {
     unhandled.push(error);
   };
-  process.on('unhandledRejection', handler);
+  const warningHandler = (warning) => {
+    warnings.push(warning.message);
+  };
+
+  process.on('unhandledRejection', unhandledHandler);
+  process.on('warning', warningHandler);
 
   const maybeDevice = Promise.reject(new Error('connection failed'));
   addActive(maybeDevice, createServiceStub(), { ACTIVE: 1, INACTIVE: 0 });
 
   await new Promise((resolve) => setImmediate(resolve));
-  process.off('unhandledRejection', handler);
+
+  process.off('unhandledRejection', unhandledHandler);
+  process.off('warning', warningHandler);
 
   assert.equal(unhandled.length, 0);
+  assert.equal(warnings.length, 1);
+  assert.match(warnings[0], /active/);
+  assert.match(warnings[0], /connection failed/);
 });

@@ -1,4 +1,5 @@
 import { Service, Characteristic } from 'homebridge';
+import { reportSetupError } from '../../utils';
 
 // https://developers.homebridge.io/#/characteristic/Active
 export function add(
@@ -12,7 +13,7 @@ export function add(
     device.on('powerChanged', (isOn: boolean) => {
       service.updateCharacteristic(characteristic, isOn ? ACTIVE : INACTIVE);
     });
-  }).catch(() => undefined);
+  }).catch((error) => reportSetupError('active', error));
 
   return service
     .getCharacteristic(characteristic)

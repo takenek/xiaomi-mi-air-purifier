@@ -1,4 +1,5 @@
 import { Service, Characteristic } from 'homebridge';
+import { reportSetupError } from '../utils';
 
 function pm2_5ToAqi(aqi: number) {
   if (!aqi) {
@@ -28,7 +29,7 @@ export function add(
     device.on('pm2.5Changed', (value: number) => {
       service.updateCharacteristic(characteristic, pm2_5ToAqi(value));
     });
-  }).catch(() => undefined);
+  }).catch((error) => reportSetupError('air-quality', error));
 
   return service.getCharacteristic(characteristic).onGet(async () => {
     const device = await maybeDevice;

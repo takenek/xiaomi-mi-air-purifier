@@ -1,4 +1,5 @@
 import { Service, Characteristic, CharacteristicEventTypes } from 'homebridge';
+import { reportSetupError } from '../../utils';
 
 // https://developers.homebridge.io/#/characteristic/FilterLifeLevel
 export function add(
@@ -10,7 +11,7 @@ export function add(
     device.on('filterLifeChanged', (value: number) => {
       service.updateCharacteristic(characteristic, value);
     });
-  }).catch(() => undefined);
+  }).catch((error) => reportSetupError('filter-life-level', error));
 
   return service.getCharacteristic(characteristic).onGet(async () => {
     const device = await maybeDevice;

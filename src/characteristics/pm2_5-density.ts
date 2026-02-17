@@ -1,4 +1,5 @@
 import { Service, Characteristic } from 'homebridge';
+import { reportSetupError } from '../utils';
 
 // https://developers.homebridge.io/#/characteristic/PM2_5Density
 export function add(
@@ -10,7 +11,7 @@ export function add(
     device.on('pm2.5Changed', (value) => {
       service.updateCharacteristic(characteristic, value);
     });
-  }).catch(() => undefined);
+  }).catch((error) => reportSetupError('pm2_5-density', error));
 
   return service.getCharacteristic(characteristic).onGet(async () => {
     const device = await maybeDevice;

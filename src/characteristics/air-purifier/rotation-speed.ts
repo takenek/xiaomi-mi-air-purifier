@@ -1,5 +1,6 @@
 import { Service, Characteristic, CharacteristicEventTypes } from 'homebridge';
 import { MODE } from '../../miio-consts';
+import { reportSetupError } from '../../utils';
 
 // http://miot-spec.org/miot-spec-v2/instance?type=urn:miot-spec-v2:device:air-purifier:0000A007:zhimi-ma4:1
 // Range 0 - 3000
@@ -17,7 +18,7 @@ export function add(
     device.on('fanSpeedChanged', (speed) => {
       service.updateCharacteristic(characteristic, toPercentage(speed));
     });
-  }).catch(() => undefined);
+  }).catch((error) => reportSetupError('rotation-speed', error));
 
   return service
     .getCharacteristic(characteristic)

@@ -1,4 +1,5 @@
 import { Service, Characteristic, CharacteristicEventTypes } from 'homebridge';
+import { reportSetupError } from '../../utils';
 
 export const DEFAULT_FILTER_CHANGE_THRESHOLD = 5;
 
@@ -21,7 +22,7 @@ export function add(
         service.updateCharacteristic(characteristic, CHANGE_FILTER);
       }
     });
-  }).catch(() => undefined);
+  }).catch((error) => reportSetupError('filter-change-indication', error));
 
   return service.getCharacteristic(characteristic).onGet(async () => {
     const device = await maybeDevice;

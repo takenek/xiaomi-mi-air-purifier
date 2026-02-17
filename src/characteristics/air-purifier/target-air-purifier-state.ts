@@ -1,5 +1,6 @@
 import { Service, Characteristic, CharacteristicEventTypes } from 'homebridge';
 import { MODE } from '../../miio-consts';
+import { reportSetupError } from '../../utils';
 
 // https://developers.homebridge.io/#/characteristic/TargetAirPurifierState
 export function add(
@@ -13,7 +14,7 @@ export function add(
     device.on('modeChanged', (mode) => {
       service.updateCharacteristic(characteristic, mode ? MANUAL : AUTO);
     });
-  }).catch(() => undefined);
+  }).catch((error) => reportSetupError('target-air-purifier-state', error));
 
   return service
     .getCharacteristic(characteristic)

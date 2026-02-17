@@ -1,4 +1,5 @@
 import { Service, Characteristic } from 'homebridge';
+import { reportSetupError } from '../utils';
 
 // https://developers.homebridge.io/#/characteristic/CurrentTemperature
 export function add(
@@ -10,7 +11,7 @@ export function add(
     device.on('temperatureChanged', ({ value }) => {
       service.updateCharacteristic(characteristic, value);
     });
-  }).catch(() => undefined);
+  }).catch((error) => reportSetupError('current-temperature', error));
 
   return service.getCharacteristic(characteristic).onGet(
     // Temperature { value: 23.4, unit: 'C' }

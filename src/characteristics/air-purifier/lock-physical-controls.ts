@@ -1,4 +1,5 @@
 import { Service, Characteristic, CharacteristicEventTypes } from 'homebridge';
+import { reportSetupError } from '../../utils';
 
 // https://developers.homebridge.io/#/characteristic/LockPhysicalControls
 export function add(
@@ -15,7 +16,7 @@ export function add(
         isLocked ? CONTROL_LOCK_ENABLED : CONTROL_LOCK_DISABLED,
       );
     });
-  }).catch(() => undefined);
+  }).catch((error) => reportSetupError('lock-physical-controls', error));
 
   return service
     .getCharacteristic(characteristic)

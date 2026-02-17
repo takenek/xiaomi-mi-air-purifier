@@ -99,3 +99,33 @@ test('ResilientMiioDevice: detaches stale event listeners after recoverable reco
     'stale device events should not be forwarded after reconnect failure',
   );
 });
+
+test('ResilientMiioDevice: reconnect cleanup supports emitters without off()', async () => {
+  const listeners = new Map();
+  const legacyEmitter = {
+    on(event, handler) {
+      listeners.set(event, handler);
+      return this;
+    },
+    removeListener(event, handler) {
+      if (listeners.get(event) === handler) {
+        listeners.delete(event);
+      }
+      return this;
+    },
+    async power() {
+      const error = new Error('socket not connected');
+      error.code = 'ENOTCONN';
+      throw error;
+    },
+  };
+
+  const resilient = new ResilientMiioDevice(
+    async () => legacyEmitter,
+    () => {},
+    { warn: () => {} },
+  );
+
+  await assert.rejects(() => resilient.invoke('power'));
+  assert.equal(listeners.has('powerChanged'), false);
+});

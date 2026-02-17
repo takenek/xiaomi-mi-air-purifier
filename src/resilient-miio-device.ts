@@ -21,18 +21,41 @@ export class ResilientMiioDevice extends EventEmitter {
     this.log.warn('miio device emitted an error event', error);
   };
 
+  private removeDeviceListener(
+    device: EventEmitter,
+    eventName: string,
+    listener: (...args: unknown[]) => void,
+  ) {
+    const removableDevice = device as EventEmitter & {
+      off?: (eventName: string, listener: (...args: unknown[]) => void) => void;
+      removeListener?: (
+        eventName: string,
+        listener: (...args: unknown[]) => void,
+      ) => void;
+    };
+
+    if (typeof removableDevice.off === 'function') {
+      removableDevice.off(eventName, listener);
+      return;
+    }
+
+    removableDevice.removeListener?.(eventName, listener);
+  }
+
   private detachEventForwarding() {
     if (!this.attachedDevice) {
       return;
     }
 
+    const attachedDevice = this.attachedDevice;
+
     DEVICE_EVENTS.forEach((eventName) => {
       const listener = this.forwarders.get(eventName);
       if (listener) {
-        this.attachedDevice?.off(eventName, listener);
+        this.removeDeviceListener(attachedDevice, eventName, listener);
       }
     });
-    this.attachedDevice.off('error', this.deviceErrorListener);
+    this.removeDeviceListener(attachedDevice, 'error', this.deviceErrorListener);
     this.attachedDevice = undefined;
   }
 

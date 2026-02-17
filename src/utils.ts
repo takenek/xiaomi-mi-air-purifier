@@ -40,11 +40,10 @@ export const wait = (delay: number, signal?: AbortSignal) =>
     abortSignal?.addEventListener?.('abort', onAbort, { once: true });
   });
 
-export function reportSetupError(context: string, error: unknown): void {
-  const details = error instanceof Error ? error : new Error(String(error));
-  process.emitWarning(
-    `[${context}] Failed to initialize device event subscription: ${details.message}`,
-  );
+export function reportSetupError(_context: string, _error: unknown): void {
+  // The accessory constructor already logs connection bootstrap failures once.
+  // Characteristic-level setup hooks intentionally swallow this to avoid
+  // duplicate process warnings for each characteristic registration.
 }
 
 const RECOVERABLE_ERROR_CODES = new Set([

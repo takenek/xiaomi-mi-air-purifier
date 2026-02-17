@@ -1,7 +1,11 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { retry, isRecoverableConnectionError } = require('../dist/utils');
+const {
+  retry,
+  isRecoverableConnectionError,
+  reportSetupError,
+} = require('../dist/utils');
 
 test('retry: retries for EINTR and then succeeds', async () => {
   let calls = 0;
@@ -127,4 +131,27 @@ test('isRecoverableConnectionError: known socket errors are recoverable', () => 
     error.code = code;
     assert.equal(isRecoverableConnectionError(error), true, code);
   });
+});
+
+
+test('reportSetupError: warns once per context and message fingerprint', async () => {
+  const warnings = [];
+  const warningHandler = (warning) => {
+    warnings.push(warning.message);
+  };
+
+  process.on('warning', warningHandler);
+
+  reportSetupError('active', new Error('connection failed'));
+  reportSetupError('active', new Error('connection failed'));
+  reportSetupError('active', new Error('different'));
+
+  await new Promise((resolve) => setImmediate(resolve));
+
+  process.off('warning', warningHandler);
+
+  assert.equal(warnings.length, 2);
+  assert.match(warnings[0], /active/);
+  assert.match(warnings[0], /connection failed/);
+  assert.match(warnings[1], /different/);
 });

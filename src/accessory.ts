@@ -80,9 +80,12 @@ class ResilientMiioDevice extends EventEmitter {
           throw new Error(`Unsupported miio method: ${methodName}`);
         }
 
-        return await (candidateMethod as (...argList: unknown[]) => Promise<unknown>)(
-          ...args,
-        );
+        return await (
+          candidateMethod as (
+            this: unknown,
+            ...argList: unknown[]
+          ) => Promise<unknown>
+        ).apply(device, args);
       } catch (error) {
         lastError = error;
 

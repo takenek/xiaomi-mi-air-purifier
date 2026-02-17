@@ -40,6 +40,72 @@ export const wait = (delay: number, signal?: AbortSignal) =>
     abortSignal?.addEventListener?.('abort', onAbort, { once: true });
   });
 
+export const withTimeout = <T>(
+  task: Promise<T>,
+  timeoutMs: number,
+  message: string,
+  signal?: AbortSignal,
+): Promise<T> => {
+  if (signal?.aborted) {
+    return Promise.reject(createAbortError());
+  }
+
+  return new Promise((resolve, reject) => {
+    let settled = false;
+
+    const abortSignal = signal as AbortSignalWithEventListener | undefined;
+    const timeout = setTimeout(() => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      abortSignal?.removeEventListener?.('abort', onAbort);
+      const error = new Error(message);
+      (error as Error & { code: string }).code = 'ETIMEDOUT';
+      reject(error);
+    }, timeoutMs);
+
+    const finalize = () => {
+      clearTimeout(timeout);
+      abortSignal?.removeEventListener?.('abort', onAbort);
+    };
+
+    function onAbort() {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      finalize();
+      reject(createAbortError());
+    }
+
+    abortSignal?.addEventListener?.('abort', onAbort, { once: true });
+
+    task.then(
+      (value) => {
+        if (settled) {
+          return;
+        }
+
+        settled = true;
+        finalize();
+        resolve(value);
+      },
+      (error) => {
+        if (settled) {
+          return;
+        }
+
+        settled = true;
+        finalize();
+        reject(error);
+      },
+    );
+  });
+};
+
 const reportedSetupErrors = new Set<string>();
 
 export function reportSetupError(context: string, error: unknown): void {
@@ -98,6 +164,10 @@ export const retry = <T>(
   retries = Number.POSITIVE_INFINITY,
   shouldRetry: (reason: unknown) => boolean = () => true,
   signal?: AbortSignal,
+  options?: {
+    maxDelayMs?: number;
+    jitterRatio?: number;
+  },
 ): Promise<T> =>
   Promise.resolve()
     .then(() => task())
@@ -107,8 +177,13 @@ export const retry = <T>(
       }
 
       if (retries > 0 && shouldRetry(reason)) {
-        return wait(delay, signal).then(() =>
-          retry(task, delay, retries - 1, shouldRetry, signal),
+        const maxDelayMs = options?.maxDelayMs ?? delay;
+        const jitterRatio = options?.jitterRatio ?? 0;
+        const jitter = delay * jitterRatio * Math.random();
+        const boundedDelay = Math.min(delay + jitter, maxDelayMs);
+
+        return wait(boundedDelay, signal).then(() =>
+          retry(task, Math.min(delay * 2, maxDelayMs), retries - 1, shouldRetry, signal, options),
         );
       }
       return Promise.reject(reason);

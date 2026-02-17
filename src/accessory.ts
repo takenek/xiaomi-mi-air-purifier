@@ -6,7 +6,12 @@ import {
   AccessoryPlugin,
 } from 'homebridge';
 import miio from '@rifat/miio';
-import { retry, isDefined, isRecoverableConnectionError } from './utils';
+import {
+  retry,
+  isDefined,
+  isRecoverableConnectionError,
+  withTimeout,
+} from './utils';
 import { ResilientMiioDevice } from './resilient-miio-device';
 import { add as addActive } from './characteristics/air-purifier/active';
 import { add as addCurrentAirPurifierState } from './characteristics/air-purifier/current-air-purifier-state';
@@ -24,6 +29,8 @@ import { add as addCurrentTemperature } from './characteristics/current-temperat
 import { add as addCurrentRelativeHumidity } from './characteristics/current-relative-humidity';
 
 const RETRY_DELAY = 5000;
+const MAX_RETRY_DELAY = 60000;
+const CONNECT_TIMEOUT = 10000;
 export interface XiaomiMiAirPurifierAccessoryConfig extends AccessoryConfig {
   token: string;
   address: string;
@@ -214,15 +221,26 @@ export class XiaomiMiAirPurifierAccessory implements AccessoryPlugin {
     if (!this.connection) {
       const { address, token } = config;
       this.connectionAbortController = new AbortController();
+      const { signal } = this.connectionAbortController;
       this.connection = retry(
-        () => miio.device({ address, token }).then((device) => {
-          this.log.debug(`Connection established to ${address}.`);
-          return device;
-        }),
+        () =>
+          withTimeout(
+            miio.device({ address, token }).then((device) => {
+              this.log.debug(`Connection established to ${address}.`);
+              return device;
+            }),
+            CONNECT_TIMEOUT,
+            `Timed out while connecting to ${address}`,
+            signal,
+          ),
         RETRY_DELAY,
         Number.POSITIVE_INFINITY,
         isRecoverableConnectionError,
-        this.connectionAbortController.signal,
+        signal,
+        {
+          maxDelayMs: MAX_RETRY_DELAY,
+          jitterRatio: 0.2,
+        },
       );
     }
 

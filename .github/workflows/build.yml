@@ -8,22 +8,28 @@ jobs:
 
     strategy:
       matrix:
-        # the Node.js versions to build on
-        node-version: [12.x, 16.x]
+        node-version: [20.x, 22.x]
+
+    env:
+      NODE_OPTIONS: --unhandled-rejections=strict --trace-warnings --trace-uncaught --throw-deprecation --pending-deprecation --trace-deprecation
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
+          cache: npm
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Lint the project
         run: npm run lint
+
+      - name: Run tests
+        run: npm test
 
       - name: Build the project
         run: npm run build

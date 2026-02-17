@@ -178,3 +178,56 @@ test('reportSetupError: warns once per context and message fingerprint', async (
   assert.match(warnings[0], /connection failed/);
   assert.match(warnings[1], /different/);
 });
+
+
+test('withTimeout: rejects with ETIMEDOUT when task hangs', async () => {
+  const { withTimeout } = require('../dist/utils');
+
+  await assert.rejects(
+    withTimeout(new Promise(() => {}), 5, 'connect timeout'),
+    (error) => {
+      assert.equal(error.code, 'ETIMEDOUT');
+      assert.match(error.message, /connect timeout/);
+      return true;
+    },
+  );
+});
+
+test('retry: uses bounded exponential backoff options', async () => {
+  const originalRandom = Math.random;
+  Math.random = () => 0;
+
+  const waits = [];
+  const originalSetTimeout = global.setTimeout;
+  global.setTimeout = ((fn, delay, ...rest) => {
+    waits.push(delay);
+    return originalSetTimeout(fn, 0, ...rest);
+  });
+
+  let calls = 0;
+  try {
+    const result = await retry(
+      async () => {
+        calls += 1;
+        if (calls < 4) {
+          const error = new Error('temporary timeout');
+          error.code = 'ETIMEDOUT';
+          throw error;
+        }
+
+        return 'ok';
+      },
+      2,
+      5,
+      isRecoverableConnectionError,
+      undefined,
+      { maxDelayMs: 5, jitterRatio: 0 },
+    );
+
+    assert.equal(result, 'ok');
+    assert.deepEqual(waits.slice(0, 3), [2, 4, 5]);
+  } finally {
+    Math.random = originalRandom;
+    global.setTimeout = originalSetTimeout;
+  }
+});

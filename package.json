@@ -26,7 +26,8 @@
     "build": "rimraf ./dist && tsc",
     "prepublishOnly": "npm run lint && npm run build && pinst --disable",
     "postinstall": "husky install",
-    "postpublish": "pinst --enable"
+    "postpublish": "pinst --enable",
+    "test": "npm run build && node --test test/**/*.spec.js"
   },
   "keywords": [
     "homebridge-plugin"

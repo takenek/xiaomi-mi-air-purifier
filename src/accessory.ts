@@ -5,8 +5,9 @@ import {
   AccessoryConfig,
   AccessoryPlugin,
 } from 'homebridge';
+import { EventEmitter } from 'events';
 import miio from '@rifat/miio';
-import { retry, isDefined } from './utils';
+import { retry, isDefined, isRecoverableConnectionError } from './utils';
 import { add as addActive } from './characteristics/air-purifier/active';
 import { add as addCurrentAirPurifierState } from './characteristics/air-purifier/current-air-purifier-state';
 import { add as addTargetAirPurifierState } from './characteristics/air-purifier/target-air-purifier-state';
@@ -22,9 +23,18 @@ import { add as addPm2_5Density } from './characteristics/pm2_5-density';
 import { add as addCurrentTemperature } from './characteristics/current-temperature';
 import { add as addCurrentRelativeHumidity } from './characteristics/current-relative-humidity';
 
-// TODO: Add this under "Advanced Settings"
-// Try to connect to the device after RETRY_DELAY ms delay in case of failure
 const RETRY_DELAY = 5000;
+const OPERATION_RETRIES = 3;
+const DEVICE_EVENTS = [
+  'powerChanged',
+  'modeChanged',
+  'fanSpeedChanged',
+  'childLockChanged',
+  'filterLifeChanged',
+  'pm2.5Changed',
+  'temperatureChanged',
+  'relativeHumidityChanged',
+];
 
 export interface XiaomiMiAirPurifierAccessoryConfig extends AccessoryConfig {
   token: string;
@@ -41,6 +51,55 @@ function isValidConfig(
   config: AccessoryConfig,
 ): config is XiaomiMiAirPurifierAccessoryConfig {
   return !!config.token && !!config.address;
+}
+
+class ResilientMiioDevice extends EventEmitter {
+  constructor(
+    private readonly connectDevice: () => Promise<any>,
+    private readonly resetConnection: () => void,
+    private readonly log: Logger,
+  ) {
+    super();
+  }
+
+  attachEventForwarding(device: EventEmitter) {
+    DEVICE_EVENTS.forEach((eventName) => {
+      device.on(eventName, (...args: unknown[]) => this.emit(eventName, ...args));
+    });
+  }
+
+  async invoke(methodName: string, ...args: unknown[]) {
+    let lastError: unknown;
+
+    for (let attempt = 0; attempt < OPERATION_RETRIES; attempt += 1) {
+      try {
+        const device = await this.connectDevice();
+        const candidateMethod = (device as Record<string, unknown>)[methodName];
+
+        if (typeof candidateMethod !== 'function') {
+          throw new Error(`Unsupported miio method: ${methodName}`);
+        }
+
+        return await (candidateMethod as (...argList: unknown[]) => Promise<unknown>)(
+          ...args,
+        );
+      } catch (error) {
+        lastError = error;
+
+        if (!isRecoverableConnectionError(error)) {
+          break;
+        }
+
+        this.log.warn(
+          `Recoverable error while calling '${methodName}', reconnecting (attempt ${attempt + 1}/${OPERATION_RETRIES})`,
+          error,
+        );
+        this.resetConnection();
+      }
+    }
+
+    throw lastError;
+  }
 }
 
 export class XiaomiMiAirPurifierAccessory implements AccessoryPlugin {
@@ -77,13 +136,35 @@ export class XiaomiMiAirPurifierAccessory implements AccessoryPlugin {
       } = api.hap;
 
       this.name = config.name;
-      this.maybeDevice = this.connect(config).then((device) => {
-        log.info(`Connected to "${this.name}" @ ${config.address}!`);
-        return device;
-      });
 
-      // Air Purifier Service
-      // Required characteristics
+      const resilientDevice = new ResilientMiioDevice(
+        () => this.connect(config),
+        () => {
+          this.connection = undefined;
+        },
+        this.log,
+      );
+
+      this.maybeDevice = this.connect(config)
+        .then((device) => {
+          resilientDevice.attachEventForwarding(device);
+          this.log.info(`Connected to "${this.name}" @ ${config.address}!`);
+
+          return new Proxy(resilientDevice, {
+            get(target, prop, receiver) {
+              if (typeof prop === 'string' && !(prop in target)) {
+                return (...args: unknown[]) => target.invoke(prop, ...args);
+              }
+
+              return Reflect.get(target, prop, receiver);
+            },
+          });
+        })
+        .catch((error) => {
+          this.log.error('Cannot initialize device connection.', error);
+          throw error;
+        });
+
       this.airPurifierService = new AirPurifier(this.name);
       addActive(
         this.maybeDevice,
@@ -101,7 +182,6 @@ export class XiaomiMiAirPurifierAccessory implements AccessoryPlugin {
         Characteristic.TargetAirPurifierState,
       );
 
-      // Optional characteristics
       if (config.enableFanSpeedControl) {
         addRotationSpeed(
           this.maybeDevice,
@@ -118,7 +198,6 @@ export class XiaomiMiAirPurifierAccessory implements AccessoryPlugin {
         );
       }
 
-      // Air Quality Sensor Service
       if (config.enableAirQuality) {
         this.airQualitySensorService = new AirQualitySensor(
           `Air Quality on ${this.name}`,
@@ -144,12 +223,11 @@ export class XiaomiMiAirPurifierAccessory implements AccessoryPlugin {
           Characteristic.FilterChangeIndication,
           {
             filterChangeThreshold:
-              config.filterChangeThreshold | DEFAULT_FILTER_CHANGE_THRESHOLD,
+              config.filterChangeThreshold ?? DEFAULT_FILTER_CHANGE_THRESHOLD,
           },
         );
       }
 
-      // Temperature Sensor Service
       if (config.enableTemperature) {
         this.temperatureSensorService = new TemperatureSensor(
           `Temperature on ${this.name}`,
@@ -162,11 +240,8 @@ export class XiaomiMiAirPurifierAccessory implements AccessoryPlugin {
         );
       }
 
-      // Humidity Sensor Service
       if (config.enableHumidity) {
-        this.humiditySensorService = new HumiditySensor(
-          `Humidity on ${this.name}`,
-        );
+        this.humiditySensorService = new HumiditySensor(`Humidity on ${this.name}`);
         addCurrentRelativeHumidity(
           this.maybeDevice,
           this.humiditySensorService,
@@ -174,46 +249,38 @@ export class XiaomiMiAirPurifierAccessory implements AccessoryPlugin {
         );
       }
 
-      // Device Info
       this.accessoryInformationService = new AccessoryInformation().setCharacteristic(
         Characteristic.Manufacturer,
         'Xiaomi Corporation',
       );
 
-      log.info(`${this.name} finished initializing!`);
+      this.log.info(`${this.name} finished initializing!`);
     } else {
-      log.error('Your must provide IP address and token of the Air Purifier.');
+      this.log.error('Your must provide IP address and token of the Air Purifier.');
     }
   }
 
-  connect(config) {
+  connect(config: XiaomiMiAirPurifierAccessoryConfig): Promise<any> {
     if (!this.connection) {
-      this.connection = new Promise((resolve) => {
-        const { address, token } = config;
-        // Now keeps retrying forever.
-        // Maybe can add a max retries number as an option
-        retry(() => miio.device({ address, token }), RETRY_DELAY)
-          .then(resolve)
-          .catch((e) => {
-            this.log.error('Error occurred during retry:', e);
-          });
-      });
+      const { address, token } = config;
+      this.connection = retry(
+        () => miio.device({ address, token }).then((device) => {
+          this.log.debug(`Connection established to ${address}.`);
+          return device;
+        }),
+        RETRY_DELAY,
+        Number.POSITIVE_INFINITY,
+        isRecoverableConnectionError,
+      );
     }
+
     return this.connection;
   }
 
-  /*
-   * This method is optional to implement. It is called when HomeKit ask to identify the accessory.
-   * Typical this only ever happens at the pairing process.
-   */
   identify() {
     this.log.info(`Identifying "${this.name}" @ ${this.config?.address}`);
   }
 
-  /*
-   * This method is called directly after creation of this instance.
-   * It should return all services which should be added to the accessory.
-   */
   getServices(): Service[] {
     return [
       this.airPurifierService,

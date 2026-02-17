@@ -53,6 +53,29 @@ test('retry: retries for EALREADY and then succeeds', async () => {
   assert.equal(calls, 2);
 });
 
+test('retry: retries recoverable synchronous throws', async () => {
+  let calls = 0;
+
+  const result = await retry(
+    () => {
+      calls += 1;
+      if (calls < 3) {
+        const error = new Error('Socket not connected');
+        error.code = 'ENOTCONN';
+        throw error;
+      }
+
+      return Promise.resolve('ok-sync');
+    },
+    1,
+    5,
+    isRecoverableConnectionError,
+  );
+
+  assert.equal(result, 'ok-sync');
+  assert.equal(calls, 3);
+});
+
 test('retry: does not retry non-recoverable errors', async () => {
   let calls = 0;
   await assert.rejects(

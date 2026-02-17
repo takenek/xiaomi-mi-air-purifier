@@ -99,18 +99,20 @@ export const retry = <T>(
   shouldRetry: (reason: unknown) => boolean = () => true,
   signal?: AbortSignal,
 ): Promise<T> =>
-  task().catch((reason) => {
-    if (signal?.aborted) {
-      return Promise.reject(createAbortError());
-    }
+  Promise.resolve()
+    .then(() => task())
+    .catch((reason) => {
+      if (signal?.aborted) {
+        return Promise.reject(createAbortError());
+      }
 
-    if (retries > 0 && shouldRetry(reason)) {
-      return wait(delay, signal).then(() =>
-        retry(task, delay, retries - 1, shouldRetry, signal),
-      );
-    }
-    return Promise.reject(reason);
-  });
+      if (retries > 0 && shouldRetry(reason)) {
+        return wait(delay, signal).then(() =>
+          retry(task, delay, retries - 1, shouldRetry, signal),
+        );
+      }
+      return Promise.reject(reason);
+    });
 
 export const isDefined = <T>(value: T): value is NonNullable<T> =>
   value != null;

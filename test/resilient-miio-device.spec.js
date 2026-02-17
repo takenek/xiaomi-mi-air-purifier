@@ -41,3 +41,24 @@ test('ResilientMiioDevice: reattaches event forwarding after recoverable reconne
 
   assert.equal(forwardedEvents, 1);
 });
+
+test('ResilientMiioDevice: handles device error events without crashing', async () => {
+  const device = new EventEmitter();
+  device.power = async () => true;
+
+  const warnings = [];
+  const resilient = new ResilientMiioDevice(
+    async () => device,
+    () => {},
+    {
+      warn: (...args) => warnings.push(args),
+    },
+  );
+
+  await resilient.invoke('power');
+
+  assert.doesNotThrow(() => {
+    device.emit('error', new Error('EHOSTUNREACH'));
+  });
+  assert.equal(warnings.length, 1);
+});

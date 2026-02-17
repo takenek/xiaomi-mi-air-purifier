@@ -17,6 +17,9 @@ const DEVICE_EVENTS = [
 export class ResilientMiioDevice extends EventEmitter {
   private attachedDevice?: EventEmitter;
   private readonly forwarders = new Map<string, (...args: unknown[]) => void>();
+  private readonly deviceErrorListener = (error: unknown) => {
+    this.log.warn('miio device emitted an error event', error);
+  };
 
   constructor(
     private readonly connectDevice: () => Promise<any>,
@@ -38,6 +41,7 @@ export class ResilientMiioDevice extends EventEmitter {
           this.attachedDevice?.off(eventName, listener);
         }
       });
+      this.attachedDevice.off('error', this.deviceErrorListener);
     }
 
     this.attachedDevice = device;
@@ -47,6 +51,7 @@ export class ResilientMiioDevice extends EventEmitter {
       this.forwarders.set(eventName, listener);
       device.on(eventName, listener);
     });
+    device.on('error', this.deviceErrorListener);
   }
 
   async invoke(methodName: string, ...args: unknown[]) {

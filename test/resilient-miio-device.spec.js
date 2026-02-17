@@ -62,3 +62,40 @@ test('ResilientMiioDevice: handles device error events without crashing', async 
   });
   assert.equal(warnings.length, 1);
 });
+
+test('ResilientMiioDevice: detaches stale event listeners after recoverable reconnect failure', async () => {
+  const device = new EventEmitter();
+  device.power = async () => true;
+
+  let shouldFailToReconnect = false;
+  const resilient = new ResilientMiioDevice(
+    async () => {
+      if (shouldFailToReconnect) {
+        const error = new Error('host unreachable');
+        error.code = 'EHOSTUNREACH';
+        throw error;
+      }
+
+      return device;
+    },
+    () => {},
+    { warn: () => {} },
+  );
+
+  let forwardedEvents = 0;
+  resilient.on('powerChanged', () => {
+    forwardedEvents += 1;
+  });
+
+  await resilient.invoke('power');
+
+  shouldFailToReconnect = true;
+  await assert.rejects(() => resilient.invoke('power'));
+
+  device.emit('powerChanged', true);
+  assert.equal(
+    forwardedEvents,
+    0,
+    'stale device events should not be forwarded after reconnect failure',
+  );
+});

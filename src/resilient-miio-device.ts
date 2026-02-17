@@ -21,6 +21,21 @@ export class ResilientMiioDevice extends EventEmitter {
     this.log.warn('miio device emitted an error event', error);
   };
 
+  private detachEventForwarding() {
+    if (!this.attachedDevice) {
+      return;
+    }
+
+    DEVICE_EVENTS.forEach((eventName) => {
+      const listener = this.forwarders.get(eventName);
+      if (listener) {
+        this.attachedDevice?.off(eventName, listener);
+      }
+    });
+    this.attachedDevice.off('error', this.deviceErrorListener);
+    this.attachedDevice = undefined;
+  }
+
   constructor(
     private readonly connectDevice: () => Promise<any>,
     private readonly resetConnection: () => void,
@@ -34,15 +49,7 @@ export class ResilientMiioDevice extends EventEmitter {
       return;
     }
 
-    if (this.attachedDevice) {
-      DEVICE_EVENTS.forEach((eventName) => {
-        const listener = this.forwarders.get(eventName);
-        if (listener) {
-          this.attachedDevice?.off(eventName, listener);
-        }
-      });
-      this.attachedDevice.off('error', this.deviceErrorListener);
-    }
+    this.detachEventForwarding();
 
     this.attachedDevice = device;
 
@@ -84,6 +91,7 @@ export class ResilientMiioDevice extends EventEmitter {
           `Recoverable error while calling '${methodName}', reconnecting (attempt ${attempt + 1}/${OPERATION_RETRIES})`,
           error,
         );
+        this.detachEventForwarding();
         this.resetConnection();
       }
     }

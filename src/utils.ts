@@ -5,6 +5,13 @@
 export const wait = (delay: number) =>
   new Promise((resolve) => setTimeout(resolve, delay));
 
+export function reportSetupError(context: string, error: unknown): void {
+  const details = error instanceof Error ? error : new Error(String(error));
+  process.emitWarning(
+    `[${context}] Failed to initialize device event subscription: ${details.message}`,
+  );
+}
+
 const RECOVERABLE_ERROR_CODES = new Set([
   'EINTR',
   'EALREADY',

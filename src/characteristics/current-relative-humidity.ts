@@ -1,4 +1,5 @@
 import { Service, Characteristic } from 'homebridge';
+import { reportSetupError } from '../utils';
 
 // https://developers.homebridge.io/#/characteristic/CurrentRelativeHumidity
 export function add(
@@ -10,7 +11,7 @@ export function add(
     device.on('relativeHumidityChanged', (value: number) => {
       service.updateCharacteristic(characteristic, value);
     });
-  }).catch(() => undefined);
+  }).catch((error) => reportSetupError('current-relative-humidity', error));
 
   return service.getCharacteristic(characteristic).onGet(async () => {
     const device = await maybeDevice;

@@ -1,4 +1,5 @@
 import { Service, Characteristic, CharacteristicEventTypes } from 'homebridge';
+import { reportSetupError } from '../../utils';
 
 // https://developers.homebridge.io/#/characteristic/CurrentAirPurifierState
 export function add(
@@ -19,7 +20,7 @@ export function add(
         isOn ? PURIFYING_AIR : INACTIVE,
       );
     });
-  }).catch(() => undefined);
+  }).catch((error) => reportSetupError('current-air-purifier-state', error));
 
   return service.getCharacteristic(characteristic).onGet(async () => {
     const device = await maybeDevice;

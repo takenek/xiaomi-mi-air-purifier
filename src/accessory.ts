@@ -5,7 +5,7 @@ import {
   AccessoryConfig,
   AccessoryPlugin,
 } from 'homebridge';
-import miio from '@rifat/miio';
+import miio from './miio/lib/index';
 import { retry, isDefined, isRecoverableConnectionError } from './utils';
 import { ResilientMiioDevice } from './resilient-miio-device';
 import { add as addActive } from './characteristics/air-purifier/active';

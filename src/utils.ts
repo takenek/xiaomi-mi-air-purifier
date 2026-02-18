@@ -44,6 +44,7 @@ const reportedSetupErrors = new Set<string>();
 
 export function reportSetupError(context: string, error: unknown): void {
   const details = error instanceof Error ? error : new Error(String(error));
+  const message = `[${context}] Failed to initialize device event subscription: ${details.message}`;
   const fingerprint = `${context}:${details.message}`;
 
   if (reportedSetupErrors.has(fingerprint)) {
@@ -51,9 +52,8 @@ export function reportSetupError(context: string, error: unknown): void {
   }
 
   reportedSetupErrors.add(fingerprint);
-  process.emitWarning(
-    `[${context}] Failed to initialize device event subscription: ${details.message}`,
-  );
+
+  console.warn(message);
 }
 
 const RECOVERABLE_ERROR_CODES = new Set([

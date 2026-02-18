@@ -159,11 +159,10 @@ test('isRecoverableConnectionError: known socket errors are recoverable', () => 
 
 test('reportSetupError: warns once per context and message fingerprint', async () => {
   const warnings = [];
-  const warningHandler = (warning) => {
-    warnings.push(warning.message);
+  const originalWarn = console.warn;
+  console.warn = (message) => {
+    warnings.push(String(message));
   };
-
-  process.on('warning', warningHandler);
 
   reportSetupError('active', new Error('connection failed'));
   reportSetupError('active', new Error('connection failed'));
@@ -171,7 +170,7 @@ test('reportSetupError: warns once per context and message fingerprint', async (
 
   await new Promise((resolve) => setImmediate(resolve));
 
-  process.off('warning', warningHandler);
+  console.warn = originalWarn;
 
   assert.equal(warnings.length, 2);
   assert.match(warnings[0], /active/);

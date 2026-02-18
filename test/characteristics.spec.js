@@ -28,12 +28,12 @@ test('Active characteristic setup handles rejected maybeDevice without unhandled
   const unhandledHandler = (error) => {
     unhandled.push(error);
   };
-  const warningHandler = (warning) => {
-    warnings.push(warning.message);
+  const originalWarn = console.warn;
+  console.warn = (message) => {
+    warnings.push(String(message));
   };
 
   process.on('unhandledRejection', unhandledHandler);
-  process.on('warning', warningHandler);
 
   const maybeDevice = Promise.reject(new Error('connection failed'));
   addActive(maybeDevice, createServiceStub(), { ACTIVE: 1, INACTIVE: 0 });
@@ -41,7 +41,7 @@ test('Active characteristic setup handles rejected maybeDevice without unhandled
   await new Promise((resolve) => setImmediate(resolve));
 
   process.off('unhandledRejection', unhandledHandler);
-  process.off('warning', warningHandler);
+  console.warn = originalWarn;
 
   assert.equal(unhandled.length, 0);
   assert.equal(warnings.length, 1);

@@ -7,14 +7,10 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/torifat/xiaomi-mi-air-purifier"
+    "url": "https://github.com/takenek/xiaomi-mi-air-purifier"
   },
   "bugs": {
-    "url": "https://github.com/torifat/xiaomi-mi-air-purifier/issues"
-  },
-  "funding": {
-    "type": "paypal",
-    "url": "https://paypal.me/RifatNabi"
+    "url": "https://github.com/takenek/xiaomi-mi-air-purifier/issues"
   },
   "engines": {
     "node": "^18.20.4 || ^20.15.1 || ^22 || ^24",
@@ -35,18 +31,24 @@
     "@rifat/miio": "^2.0.1"
   },
   "devDependencies": {
-    "@types/node": "^16.11.11",
-    "@typescript-eslint/eslint-plugin": "^5.5.0",
-    "@typescript-eslint/parser": "^5.5.0",
-    "eslint": "^8.2.0",
-    "eslint-config-prettier": "^8.3.0",
-    "homebridge": "^1.3.8",
-    "lint-staged": "^12.1.2",
-    "nodemon": "^2.0.15",
-    "prettier": "^2.5.0",
-    "rimraf": "^3.0.2",
-    "ts-node": "^10.4.0",
-    "typescript": "^4.4.4"
+    "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.1.0",
+    "homebridge": "^1.8.0",
+    "lint-staged": "^15.2.0",
+    "nodemon": "^3.1.0",
+    "prettier": "^3.2.0",
+    "rimraf": "^5.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  },
+  "overrides": {
+    "cross-spawn": "^7.0.5",
+    "yargs-parser": "^21.1.1",
+    "ajv": "^8.12.0",
+    "mem": "^9.0.2"
   },
   "lint-staged": {
     "*.ts": "eslint --cache --fix",

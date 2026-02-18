@@ -156,6 +156,11 @@ test('isRecoverableConnectionError: known socket errors are recoverable', () => 
   });
 });
 
+test('isRecoverableConnectionError: recovers when error code appears only in message', () => {
+  const messageOnly = new Error('write EHOSTUNREACH during handshake');
+  assert.equal(isRecoverableConnectionError(messageOnly), true);
+});
+
 
 test('reportSetupError: warns once per context and message fingerprint', async () => {
   const warnings = [];

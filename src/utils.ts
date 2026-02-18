@@ -83,6 +83,15 @@ export function isRecoverableConnectionError(error: unknown): boolean {
 
   if (typeof maybeMessage === 'string') {
     const normalizedMessage = maybeMessage.toLowerCase();
+
+    if (
+      Array.from(RECOVERABLE_ERROR_CODES).some((code) =>
+        normalizedMessage.includes(code.toLowerCase()),
+      )
+    ) {
+      return true;
+    }
+
     return (
       normalizedMessage.includes('timeout') ||
       normalizedMessage.includes('timed out')

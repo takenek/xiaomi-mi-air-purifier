@@ -18,7 +18,7 @@
   },
   "main": "dist/index.js",
   "scripts": {
-    "lint": "eslint src/**/**.ts --max-warnings=0",
+    "lint": "eslint \"src/**/*.ts\" --max-warnings=0",
     "watch": "npm run build && npm link && nodemon",
     "build": "rimraf ./dist && tsc && mkdir -p dist/miio && cp -a src/miio/. dist/miio/",
     "prepublishOnly": "npm run lint && npm run build",
@@ -38,11 +38,13 @@
     "yargs": "^10.1.2"
   },
   "devDependencies": {
+    "@eslint/js": "^9.0.0",
     "@types/node": "^20.0.0",
-    "@typescript-eslint/eslint-plugin": "^7.0.0",
-    "@typescript-eslint/parser": "^7.0.0",
-    "eslint": "^8.57.0",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "eslint": "^9.39.2",
     "eslint-config-prettier": "^9.1.0",
+    "globals": "^17.3.0",
     "homebridge": "^1.8.0",
     "lint-staged": "^15.2.0",
     "nodemon": "^3.1.0",

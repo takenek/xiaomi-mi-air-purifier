@@ -1,4 +1,4 @@
-import { Service, Characteristic, CharacteristicEventTypes } from 'homebridge';
+import { Service, Characteristic } from 'homebridge';
 import { reportSetupError } from '../../utils';
 
 // https://developers.homebridge.io/#/characteristic/CurrentAirPurifierState

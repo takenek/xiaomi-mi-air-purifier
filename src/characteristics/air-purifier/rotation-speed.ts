@@ -1,4 +1,4 @@
-import { Service, Characteristic, CharacteristicEventTypes } from 'homebridge';
+import { Service, Characteristic } from 'homebridge';
 import { MODE } from '../../miio-consts';
 import { reportSetupError } from '../../utils';
 

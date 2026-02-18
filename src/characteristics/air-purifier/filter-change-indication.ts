@@ -1,4 +1,4 @@
-import { Service, Characteristic, CharacteristicEventTypes } from 'homebridge';
+import { Service, Characteristic } from 'homebridge';
 import { reportSetupError } from '../../utils';
 
 export const DEFAULT_FILTER_CHANGE_THRESHOLD = 5;
